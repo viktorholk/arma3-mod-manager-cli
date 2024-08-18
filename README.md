@@ -29,7 +29,7 @@ This have been tested on Apple Silicon M1.
   cargo run
   ````
 
-* Downloading the latest Pre-Built Package
+* Downloading the latest Pre-Built UNIX executable
   
   [Releases](https://github.com/viktorholk/arma3-mod-manager-cli/releases)
 
