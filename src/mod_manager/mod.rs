@@ -121,8 +121,8 @@ impl ModManager {
                         let mod_id: u64 =
                             path.file_name().unwrap().to_str().unwrap().parse().unwrap();
 
-                        // If the mod.cpp file is not present, skip
-                        let mod_path = Path::new(&path).join("mod.cpp");
+                        // If the meta.cpp file is not present, skip
+                        let mod_path = Path::new(&path).join("meta.cpp");
                         if !mod_path.exists() {
                             continue;
                         }
