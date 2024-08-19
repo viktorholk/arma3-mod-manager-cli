@@ -1,7 +1,7 @@
 # Arma3 Mod Manager CLI
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8a4282a0-f10f-4912-a3d3-41ce695467b5" alt="animated" />
+  <img src="https://github.com/user-attachments/assets/f5f58180-e5f4-4442-a448-c60f81df907d" alt="animated" />
 </p>
 
 ## Overview
@@ -9,8 +9,6 @@
 Arma3 Mod Manager CLI is a command-line tool designed to simplify the process of enabling and disabling mods for Arma 3. Since there is no official Arma 3 Launcher port available for Linux / macOS.
 
 This have been tested on Apple Silicon M1.
-
-
 
 ## Installation
 
