@@ -1,5 +1,5 @@
 use std::{
-    env, fs,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -13,6 +13,7 @@ mod config;
 mod file_handler;
 mod paginator;
 mod terminal;
+mod utils;
 
 #[derive(Debug, Clone)]
 pub struct Mod {
@@ -64,20 +65,8 @@ impl ModManager {
                 })
             }
 
-            Err(AppError::IoError { .. }) => {
-                // Initialize save state
-                let home_path = env::var_os("HOME").unwrap();
-                let workshop_path = Path::new(&home_path)
-                    .join("Library/Application Support/Steam/steamapps/workshop/content/107410")
-                    .into_os_string()
-                    .into_string()
-                    .unwrap();
-
-                let game_path = Path::new(&home_path)
-                    .join("Library/Application Support/Steam/steamapps/common/Arma 3")
-                    .into_os_string()
-                    .into_string()
-                    .unwrap();
+            Err(AppError::IoError(io_error)) if io_error.kind() == std::io::ErrorKind::NotFound => {
+                let (workshop_path, game_path) = utils::setup_steam_paths()?;
 
                 let config = Config::new(game_path, workshop_path)?;
 
@@ -113,39 +102,61 @@ impl ModManager {
         match fs::read_dir(&workshop_path) {
             Ok(installed_mods) => {
                 for entry in installed_mods {
-                    let entry = entry.unwrap();
+                    let entry = match entry {
+                        Ok(e) => e,
+                        Err(_) => continue,
+                    };
+
                     let path = entry.path();
 
-                    let metadata = fs::metadata(&path).unwrap();
-                    if metadata.is_dir() {
-                        let mod_id: u64 =
-                            path.file_name().unwrap().to_str().unwrap().parse().unwrap();
-
-                        // If the mod.cpp file is not present, skip
-                        let mod_path = Path::new(&path).join("mod.cpp");
-                        if !mod_path.exists() {
-                            continue;
-                        }
-
-                        let mod_content = fs::read(mod_path)
-                            .expect(&format!("Unable to read mod.cpp for mod {}", &mod_id));
-
-                        let content_str = String::from_utf8_lossy(&mod_content);
-
-                        let name = Regex::new(r#"name\s*=\s*"([^"]+)""#)
-                            .unwrap()
-                            .captures(&content_str)
-                            .unwrap()
-                            .get(1)
-                            .unwrap()
-                            .as_str();
-
-                        mods.push(Mod::new(mod_id, name.to_string()));
+                    if !path.is_dir() {
+                        continue;
                     }
+
+                    let mod_id: u64 = match path
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .and_then(|s| s.parse().ok())
+                    {
+                        Some(id) => id,
+                        None => continue,
+                    };
+
+                    // If the meta.cpp file is not present, skip
+                    let mod_path = Path::new(&path).join("meta.cpp");
+                    if !mod_path.exists() {
+                        continue;
+                    }
+
+                    let mod_content =
+                        fs::read(&mod_path).map_err(|_| AppError::MissingMeta(mod_id))?;
+
+                    let content_str = String::from_utf8_lossy(&mod_content);
+
+                    let mut name = match Regex::new(r#"name\s*=\s*"([^"]+)""#)
+                        .unwrap()
+                        .captures(&content_str)
+                        .and_then(|caps| caps.get(1))
+                        .map(|m| m.as_str().to_string())
+                    {
+                        Some(name) => name,
+                        None => continue,
+                    };
+
+                    // Uppercase the first letter of the name
+                    let mut chars = name.chars();
+                    name = match chars.next() {
+                        None => String::new(),
+                        Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
+                    };
+
+                    mods.push(Mod::new(mod_id, name.to_string()));
                 }
             }
             Err(e) => println!("{}\n{:?}", e, workshop_path),
         }
+
+        mods.sort_by(|a, b| a.name.cmp(&b.name));
 
         Ok(mods)
     }

@@ -5,8 +5,8 @@ use std::{
 };
 
 use crossterm::{
-    cursor,
-    event::{self, poll, Event, KeyCode, KeyModifiers},
+    cursor::{self, SetCursorStyle},
+    event::{self, poll, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     style::{Color, Print, SetForegroundColor},
     terminal,
@@ -35,6 +35,8 @@ impl<'a> Terminal<'a> {
         execute!(stdout, cursor::SavePosition)?;
         execute!(stdout, terminal::EnterAlternateScreen)?;
 
+        execute!(stdout, crossterm::cursor::Hide)?;
+
         terminal::enable_raw_mode()?;
 
         self.main_loop(&mut stdout)?;
@@ -44,14 +46,13 @@ impl<'a> Terminal<'a> {
         execute!(stdout, terminal::LeaveAlternateScreen)?;
         execute!(stdout, cursor::RestorePosition)?;
 
+        execute!(stdout, crossterm::cursor::Show)?;
+
         Ok(())
     }
 
     fn render(&self, stdout: &mut Stdout) -> AppResult<()> {
-        execute!(stdout, cursor::MoveTo(0, 0))?;
-        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
-
-        execute!(stdout, crossterm::cursor::Hide)?;
+        self.clear_screen(stdout)?;
 
         let mut top_offset = 0;
 
@@ -60,54 +61,6 @@ impl<'a> Terminal<'a> {
             SetForegroundColor(Color::Cyan),
             cursor::MoveTo(0, top_offset),
             Print("Arma 3 Mod Manager CLI"),
-            SetForegroundColor(Color::Reset)
-        )?;
-
-        top_offset += 2;
-
-        execute!(
-            stdout,
-            cursor::MoveTo(0, top_offset),
-            SetForegroundColor(Color::Cyan),
-            Print("Navigate with <WASD>, <HJKL> or <ARROW KEYS>"),
-            SetForegroundColor(Color::Reset)
-        )?;
-
-        top_offset += 1;
-
-        execute!(
-            stdout,
-            cursor::MoveTo(0, top_offset),
-            SetForegroundColor(Color::Cyan),
-            Print("Enable Mod: <SPACE> | Enable All: <CTRL> + <SPACE>"),
-            SetForegroundColor(Color::Reset)
-        )?;
-
-        top_offset += 1;
-
-        execute!(
-            stdout,
-            cursor::MoveTo(0, top_offset),
-            SetForegroundColor(Color::Cyan),
-            Print("Refresh Mods: R"),
-            SetForegroundColor(Color::Reset)
-        )?;
-
-        top_offset += 1;
-        execute!(
-            stdout,
-            cursor::MoveTo(0, top_offset),
-            SetForegroundColor(Color::Cyan),
-            Print("Start Game: P"),
-            SetForegroundColor(Color::Reset)
-        )?;
-
-        top_offset += 1;
-        execute!(
-            stdout,
-            cursor::MoveTo(0, top_offset),
-            SetForegroundColor(Color::Cyan),
-            Print("Quit Manager: ESC"),
             SetForegroundColor(Color::Reset)
         )?;
 
@@ -122,16 +75,10 @@ impl<'a> Terminal<'a> {
         execute!(
             stdout,
             cursor::MoveTo(0, top_offset),
-            SetForegroundColor(Color::White),
             Print(&format!(
-                "Mods: {}/{}{}Page: {}/{}",
-                enabled_mods,
-                total_mods,
-                " ".repeat(25),
-                page_number,
-                total_pages
+                "Mods: {:<2}/{}{:^25}Page: {:<2}/{}",
+                enabled_mods, total_mods, " ", page_number, total_pages
             )),
-            SetForegroundColor(Color::Reset),
         )?;
 
         top_offset += 2;
@@ -170,6 +117,8 @@ impl<'a> Terminal<'a> {
 
             str += &format!(" {}", m.name);
 
+            str.truncate(41);
+
             execute!(
                 stdout,
                 cursor::MoveTo(3, top_offset),
@@ -182,21 +131,72 @@ impl<'a> Terminal<'a> {
 
         // Show pagination direction
 
-        if page_number < total_pages {
-            execute!(stdout, cursor::MoveTo(23, top_offset), Print("-->"),)?;
+        if (page_number < total_pages) && (page_number > 1) {
+            execute!(
+                stdout,
+                cursor::MoveTo(0, top_offset),
+                Print(&format!("{}{:^38}{}", "<--", "", "-->")),
+            )?;
+        } else if page_number < total_pages {
+            execute!(
+                stdout,
+                cursor::MoveTo(0, top_offset),
+                Print(&format!("{}{:^38}{}", "   ", "", "-->")),
+            )?;
+        } else if page_number > 1 {
+            execute!(
+                stdout,
+                cursor::MoveTo(0, top_offset),
+                Print(&format!("{}{:^38}{}", "<--", "", "   ")),
+            )?;
         }
 
-        if page_number > 1 {
-            execute!(stdout, cursor::MoveTo(3, top_offset), Print("<--"),)?;
-        }
-
-        top_offset += 1;
+        top_offset = 2;
+        let info_left_offset = 50;
+        let info_text_padding = 25;
 
         execute!(
             stdout,
-            cursor::MoveTo(0, top_offset),
-            Print("For more information visit: github.com/viktorholk/arma3-mod-manager-cli")
+            cursor::MoveTo(info_left_offset, top_offset),
+            Print(&format!(
+                "{:<padding$}{}",
+                "Action",
+                "Keybindings",
+                padding = info_text_padding
+            )),
         )?;
+
+        let actions_keybindings = vec![
+            ("Navigation", "<WASD>, <HJKL> or <ARROW KEYS>"),
+            ("Toggle Selected Mod", "<SPACE>"),
+            ("Toggle All Mods", "<CTRL> + <SPACE>"),
+            ("Refresh Mods", "R"),
+            ("Set Custom Parameters", "F"),
+            ("Launch Game", "P"),
+        ];
+
+        for (i, (action, keybinding)) in actions_keybindings.iter().enumerate() {
+            let y_offset = top_offset + 2 + i as u16; // Adjust starting y offset as needed
+
+            execute!(
+                stdout,
+                cursor::MoveTo(info_left_offset, y_offset),
+                SetForegroundColor(Color::Cyan),
+                Print(&format!(
+                    "{:<padding$}{}",
+                    action,
+                    keybinding,
+                    padding = info_text_padding
+                )),
+                SetForegroundColor(Color::Reset),
+            )?;
+        }
+
+        //execute!(
+        //    stdout,
+        //    cursor::MoveTo(info_left_offset, top_offset),
+        //    Print("For more information visit: github.com/viktorholk/arma3-mod-manager-cli"),
+        //)?;
 
         stdout.flush()?;
 
@@ -267,6 +267,9 @@ impl<'a> Terminal<'a> {
                         KeyCode::Char('r') => {
                             self.mod_manager.refresh_mods()?;
                         }
+                        KeyCode::Char('f') => {
+                            self.set_custom_parameters_screen(stdout)?;
+                        }
                         KeyCode::Char('p') => {
                             self.start_game()?;
                         }
@@ -306,6 +309,8 @@ impl<'a> Terminal<'a> {
         super::file_handler::remove_dir_symlinks(game_path)?;
 
         if !enabled_mods.is_empty() {
+            command.arg("--args");
+
             let mod_paths = enabled_mods
                 .iter()
                 .map(|m| m.get_path(workshop_path))
@@ -320,20 +325,150 @@ impl<'a> Terminal<'a> {
             self.mod_manager.config.save()?;
 
             // Build args
-            command.args([
-                "--args",
-                &format!(
-                    "-mod={}",
-                    enabled_mods
-                        .iter()
-                        .map(|m| m.id.to_string())
-                        .collect::<Vec<String>>()
-                        .join(";")
-                ),
-            ]);
+            let default_args = self.mod_manager.config.get_default_args();
+            if default_args.len() > 0 {
+                command.arg(default_args);
+            }
+            command.arg(&format!(
+                "-mod={}",
+                enabled_mods
+                    .iter()
+                    .map(|m| m.id.to_string())
+                    .collect::<Vec<String>>()
+                    .join(";")
+            ));
         }
 
         command.output()?;
+
+        Ok(())
+    }
+
+    fn clear_screen(&self, stdout: &mut Stdout) -> AppResult<()> {
+        execute!(stdout, cursor::MoveTo(0, 0))?;
+        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
+
+        Ok(())
+    }
+
+    fn set_custom_parameters_screen(&mut self, stdout: &mut Stdout) -> AppResult<()> {
+        let mut args_string = self.mod_manager.config.get_default_args().to_string();
+        let mut current_pos = args_string.len() as u16;
+
+        // Set up the terminal
+
+        execute!(stdout, cursor::Show)?;
+        execute!(stdout, SetCursorStyle::BlinkingUnderScore)?;
+        stdout.flush()?;
+
+        self.clear_screen(stdout)?;
+
+        execute!(
+            stdout,
+            SetForegroundColor(Color::Cyan),
+            cursor::MoveTo(0, 0),
+            Print("Arma 3 Mod Manager CLI"),
+            SetForegroundColor(Color::Reset),
+        )?;
+
+        execute!(
+            stdout,
+            cursor::MoveTo(0, 2),
+            Print("Press <ENTER> to save"),
+        )?;
+
+        let arg_string_left = 4;
+        let arg_string_top = 4;
+        let arg_string_left_padding = arg_string_left - 3;
+
+        execute!(
+            stdout,
+            SetForegroundColor(Color::Red),
+            cursor::MoveTo(arg_string_left_padding, arg_string_top),
+            Print(">"),
+            SetForegroundColor(Color::Reset)
+        )?;
+
+        execute!(
+            stdout,
+            cursor::MoveTo(arg_string_left, arg_string_top),
+            Print(&args_string)
+        )?;
+
+        execute!(
+            stdout,
+            cursor::MoveTo(0, arg_string_top + 2),
+            Print("For more information visit: https://community.bistudio.com/wiki/Arma_3:_Startup_Parameters")
+        )?;
+
+        execute!(
+            stdout,
+            cursor::MoveTo(current_pos + arg_string_left, arg_string_top)
+        )?;
+
+        loop {
+            if event::poll(Duration::from_millis(500))? {
+                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                    match code {
+                        KeyCode::Esc => {
+                            break;
+                        }
+                        KeyCode::Enter => {
+                            self.mod_manager.config.set_default_args(args_string);
+                            self.mod_manager.config.save()?;
+
+                            break;
+                        }
+                        KeyCode::Backspace => {
+                            if !args_string.is_empty() && current_pos > 0 {
+                                args_string.pop();
+                                current_pos -= 1;
+                            }
+                        }
+                        KeyCode::Char(c) => {
+                            args_string.push(c);
+                            current_pos += 1;
+                        }
+                        _ => {}
+                    }
+
+                    execute!(stdout, terminal::Clear(terminal::ClearType::CurrentLine))?;
+
+                    execute!(
+                        stdout,
+                        SetForegroundColor(Color::Red),
+                        cursor::MoveTo(arg_string_left_padding, arg_string_top),
+                        Print(">"),
+                        SetForegroundColor(Color::Reset)
+                    )?;
+
+                    // Clear the previous line and update display
+                    execute!(
+                        stdout,
+                        cursor::MoveTo(arg_string_left, arg_string_top),
+                        Print(&args_string)
+                    )?;
+
+                    execute!(
+            stdout,
+            cursor::MoveTo(0, arg_string_top + 2),
+            Print("For more information visit: https://community.bistudio.com/wiki/Arma_3:_Startup_Parameters")
+        )?;
+
+                    // Move cursor to the new position
+                    execute!(
+                        stdout,
+                        cursor::MoveTo(current_pos + arg_string_left, arg_string_top)
+                    )?;
+
+                    stdout.flush()?;
+                }
+            }
+        }
+
+        // Restore terminal state
+        execute!(stdout, cursor::Hide)?;
+        execute!(stdout, SetCursorStyle::DefaultUserShape)?;
 
         Ok(())
     }
