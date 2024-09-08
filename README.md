@@ -19,18 +19,11 @@ This have been tested on Apple Silicon M1.
 
 ### Steps
 
-* Build from Source
-  
-  ````
-  git clone git@github.com:viktorholk/arma3-mod-manager-cli.git
-  cd arma3-mod-manager-cli
-  cargo run
-  ````
-
 * Downloading the latest Pre-Built UNIX executable
+  
   [Releases](https://github.com/viktorholk/arma3-mod-manager-cli/releases)
 
-  #### MacOS
+  <details><summary>MacOS</summary>
 
   On MacOS, you may be greeted with a security warning.
   Go to Settings > Privary & Security > Security
@@ -40,6 +33,17 @@ This have been tested on Apple Silicon M1.
 
 
   ![image](https://github.com/user-attachments/assets/6d58efce-6dff-41f9-b790-7839c2a15a36)
+
+
+  </details>
+
+* Or you can build from Source
+  
+  ````
+  git clone git@github.com:viktorholk/arma3-mod-manager-cli.git
+  cd arma3-mod-manager-cli
+  cargo run
+  ````
 
 
 
