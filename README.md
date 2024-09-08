@@ -28,8 +28,20 @@ This have been tested on Apple Silicon M1.
   ````
 
 * Downloading the latest Pre-Built UNIX executable
-  
   [Releases](https://github.com/viktorholk/arma3-mod-manager-cli/releases)
+
+  #### MacOS
+
+  On MacOS, you may be greeted with a security warning.
+  Go to Settings > Privary & Security > Security
+  and press Open Anyway
+
+  ![image](https://github.com/user-attachments/assets/966592ac-b40a-439e-b793-70fc42070ccd)
+
+
+  ![image](https://github.com/user-attachments/assets/6d58efce-6dff-41f9-b790-7839c2a15a36)
+
+
 
 
 
