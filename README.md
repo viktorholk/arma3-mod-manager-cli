@@ -46,6 +46,21 @@ This have been tested on Apple Silicon M1.
   ````
 
 
+### CLI Troubleshooting Guide
+
+**Issue**: Running the CLI gives an error: 
+
+`Error: InvalidPath("/Users/user/Library/Application Support/Steam/steamapps/workshop/content/107410")`
+
+**Steps to Resolve**:
+1. **Check Config File**: Verify `~/arma3-mod-manager-cli-config.json` has the correct Steam path.
+2. **Ensure Workshop Mods**: Confirm Arma 3 workshop mods are installed via Steam.
+3. **Locate Steam Path**:
+   - Right-click *Arma 3* in Steam > *Manage* > *Browse local files*.
+   - Copy a file path (`COMMAND + C`) and paste (`COMMAND + V`) into the terminal to confirm it matches your config.
+
+**Adjust and test** the paths, then rerun the CLI.
+
 
 
 
